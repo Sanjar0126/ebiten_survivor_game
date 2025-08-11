@@ -26,9 +26,12 @@ func SpawnEnemyWave(world *ecs.World, width, height, count int) {
 func UpdateEnemy(world *ecs.World, e ecs.Entity, pos *Position) {
 	// Retrieve player position
 	var playerPos *Position
-	query := ecs.NewQuery(world, ecs.All(PositionID, PlayerID))
-	for query.Next() {
-		playerPos = (*Position)(world.Get(query.Entity(), PositionID))
+	playerFilter := ecs.All(PositionID, PlayerID)
+	playerQuery := world.Query(playerFilter)
+	
+	for playerQuery.Next() {
+		playerPos = (*Position)(world.Get(playerQuery.Entity(), PositionID))
+		break // Only need the first player
 	}
 
 	if playerPos == nil {
@@ -44,6 +47,5 @@ func UpdateEnemy(world *ecs.World, e ecs.Entity, pos *Position) {
 
 func DrawEnemy(screen *ebiten.Image, pos *Position) {
 	// Placeholder for enemy drawing
-	// Replace with your own asset drawing logic
 	DrawRectangle(screen, pos.X, pos.Y, 20, 20, color.RGBA{R: 255, A: 255})
 }

@@ -9,8 +9,9 @@ import (
 )
 
 func InitializeSystems(world *ecs.World, width, height int) {
-	// Seed random number generator
-	rand.Seed(time.Now().UnixNano())
+	// Modern approach to seeding random number generator
+	// rand.Seed is deprecated in newer Go versions
+	rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	// Spawn player at the center of the screen
 	SpawnPlayer(world, float64(width)/2, float64(height)/2)
@@ -20,53 +21,66 @@ func InitializeSystems(world *ecs.World, width, height int) {
 }
 
 func UpdateSystems(world *ecs.World) {
-	// Update player
-	query := ecs.NewQuery(world, ecs.All(PositionID, PlayerID))
-	for query.Next() {
-		e := query.Entity()
+	// Step 1: Update player
+	playerFilter := ecs.All(PositionID, PlayerID)
+	playerQuery := world.Query(playerFilter)
+	for playerQuery.Next() {
+		e := playerQuery.Entity()
 		pos := (*Position)(world.Get(e, PositionID))
 		UpdatePlayer(world, e, pos)
 	}
+	
+	// Step 2: Process any bullet spawning requests
+	// This happens AFTER player updates but BEFORE bullet movement
+	ProcessBulletQueue(world)
 
-	// Update bullets
-	query = ecs.NewQuery(world, ecs.All(PositionID, BulletID))
-	for query.Next() {
-		e := query.Entity()
+	// Step 3: Update bullets
+	bulletFilter := ecs.All(PositionID, BulletID)
+	bulletQuery := world.Query(bulletFilter)
+	for bulletQuery.Next() {
+		e := bulletQuery.Entity()
 		pos := (*Position)(world.Get(e, PositionID))
 		UpdateBullet(world, e, pos)
 	}
 
-	// Update enemies
-	query = ecs.NewQuery(world, ecs.All(PositionID, EnemyID))
-	for query.Next() {
-		e := query.Entity()
+	// Step 4: Update enemies
+	enemyFilter := ecs.All(PositionID, EnemyID)
+	enemyQuery := world.Query(enemyFilter)
+	for enemyQuery.Next() {
+		e := enemyQuery.Entity()
 		pos := (*Position)(world.Get(e, PositionID))
 		UpdateEnemy(world, e, pos)
 	}
 
-	// Check collisions
+	// Step 5: Clean up bullets that went off-screen
+	CleanupBullets(world)
+
+	// Step 6: Check collisions 
 	CheckCollisions(world)
 }
 
 func DrawSystems(world *ecs.World, screen *ebiten.Image) {
 	// Draw player
-	query := ecs.NewQuery(world, ecs.All(PositionID, PlayerID))
-	for query.Next() {
-		pos := (*Position)(world.Get(query.Entity(), PositionID))
+	playerFilter := ecs.All(PositionID, PlayerID)
+	playerQuery := world.Query(playerFilter)
+	for playerQuery.Next() {
+		pos := (*Position)(world.Get(playerQuery.Entity(), PositionID))
 		DrawPlayer(screen, pos)
 	}
 
 	// Draw enemies
-	query = ecs.NewQuery(world, ecs.All(PositionID, EnemyID))
-	for query.Next() {
-		pos := (*Position)(world.Get(query.Entity(), PositionID))
+	enemyFilter := ecs.All(PositionID, EnemyID)
+	enemyQuery := world.Query(enemyFilter) 
+	for enemyQuery.Next() {
+		pos := (*Position)(world.Get(enemyQuery.Entity(), PositionID))
 		DrawEnemy(screen, pos)
 	}
 
 	// Draw bullets
-	query = ecs.NewQuery(world, ecs.All(PositionID, BulletID))
-	for query.Next() {
-		pos := (*Position)(world.Get(query.Entity(), PositionID))
+	bulletFilter := ecs.All(PositionID, BulletID)
+	bulletQuery := world.Query(bulletFilter)
+	for bulletQuery.Next() {
+		pos := (*Position)(world.Get(bulletQuery.Entity(), PositionID))
 		DrawBullet(screen, pos)
 	}
 }
